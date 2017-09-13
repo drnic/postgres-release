@@ -1,7 +1,9 @@
 package deploy_test
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 
 	cfgtypes "github.com/cloudfoundry/config-server/types"
@@ -177,6 +179,16 @@ var _ = Describe("Deploy single instance", func() {
 			Expect(err).NotTo(HaveOccurred())
 			validator := helpers.NewValidator(pgprops, pgData, DB, latestPostgreSQLVersion)
 			err = validator.ValidateAll()
+			Expect(err).NotTo(HaveOccurred())
+			bosh_ssh_command := "export PGPASSWORD=%s; /var/vcap/packages/postgres-9.6.4/bin/psql -p 5524 -U %s postgres -c 'select now()'"
+			cmd := exec.Command("bosh", "-d", envName, "ssh", "postgres/0", "-c", fmt.Sprintf(bosh_ssh_command, "fake", "vcap"))
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+			cmd = exec.Command("bosh", "-d", envName, "ssh", "postgres/0", "-c", fmt.Sprintf(bosh_ssh_command, "fake", variables["defuser_name"]))
+			err = cmd.Run()
+			Expect(err).To(HaveOccurred())
+			cmd = exec.Command("bosh", "-d", envName, "ssh", "postgres/0", "-c", fmt.Sprintf(bosh_ssh_command, variables["defuser_password"], variables["defuser_name"]))
+			err = cmd.Run()
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Enabling SSL")

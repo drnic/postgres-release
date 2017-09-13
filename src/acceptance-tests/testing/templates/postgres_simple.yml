@@ -22,6 +22,7 @@ instance_groups:
       postgres: {as: postgres-database}
     properties:
       databases:
+        trust_local_connections: false
         port: 5524
         databases:
         - citext: false
