@@ -1,15 +1,13 @@
-<%
-auth="trust"
-if !p("databases.trust_local_connections").nil? && !p("databases.trust_local_connections")
-  auth="md5"
-end
-%>
 local   all             vcap                                    trust
 host    all             vcap            127.0.0.1/32            trust
 host    all             vcap            ::1/128                 trust
-local   all             all                                     <%= auth %>
-host    all             all             127.0.0.1/32            <%= auth %>
-host    all             all             ::1/128                 <%= auth %>
+<% if !p("databases.trust_local_connections").nil? && !p("databases.trust_local_connections") %>
+local   all             all                                     md5
+<% else %>
+local   all             all                                     trust
+host    all             all             127.0.0.1/32            trust
+host    all             all             ::1/128                 trust
+<% end %>
 <% p("databases.roles", []).each do |role| %>
 <%=
 	line=nil
