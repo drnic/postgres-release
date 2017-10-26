@@ -3,6 +3,8 @@ name: pgats-simple
 releases:
 - name: postgres
   version: YOUR_RELEASE_VERSION
+- name: os-conf
+  version: latest
 
 stemcells:
 - alias: linux
@@ -16,6 +18,12 @@ instance_groups:
   networks:
   - name: YOUR_NETWORK
   jobs:
+  - name: user_add
+    release: os-conf
+    properties:
+      users:
+      - name: ((testuser_name))
+        public_key: ((sshkey.public_key))
   - name: postgres
     release: postgres
     provides:
@@ -47,7 +55,9 @@ instance_groups:
   env:
     bosh:
       keep_root_password: true
-
+variables:
+- name: sshkey
+  type: ssh
 update:
   canaries: 1
   canary_watch_time: 30000-600000

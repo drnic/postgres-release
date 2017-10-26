@@ -28,7 +28,7 @@ type DeploymentData struct {
 	ManifestBytes []byte
 	ManifestData  map[string]interface{}
 	Deployment    boshdir.Deployment
-	Variables     map[string]interface{}
+	Variables     boshtempl.Variables
 }
 type BOSHConfig struct {
 	Target         string `yaml:"target"`
@@ -184,7 +184,8 @@ func (dd DeploymentData) ContainsVariables() bool {
 
 func (dd DeploymentData) GetVariable(key string) interface{} {
 	if dd.Variables != nil {
-		if value, ok := dd.Variables[key]; ok {
+		vardef := boshtempl.VariableDefinition{Name: key}
+		if value, ok, err := dd.Variables.Get(vardef); ok && err == nil {
 			return value
 		}
 	}
@@ -194,9 +195,12 @@ func (dd DeploymentData) GetVariable(key string) interface{} {
 func (dd *DeploymentData) EvaluateTemplate(vars map[string]interface{}, opts EvaluateOptions) error {
 	template := boshtempl.NewTemplate(dd.ManifestBytes)
 
-	var variables boshtempl.StaticVariables
+	var staticVariables boshtempl.StaticVariables
+	var structVariables boshtempl.StaticVariables
+	var mapVariables MapVariables
 
-	variables = boshtempl.StaticVariables(vars)
+	staticVariables = boshtempl.StaticVariables(vars)
+	structVariables = boshtempl.StaticVariables(make(map[string]interface{}))
 	result, err := template.Evaluate(boshtempl.StaticVariables(vars), nil, boshtempl.EvaluateOpts(opts))
 	if err != nil {
 		return err
@@ -205,8 +209,8 @@ func (dd *DeploymentData) EvaluateTemplate(vars map[string]interface{}, opts Eva
 	if err := yaml.Unmarshal(dd.ManifestBytes, &dd.ManifestData); err != nil {
 		return err
 	}
-
-	factory := cfgtypes.NewValueGeneratorConcrete(NewVarsCertLoader(variables))
+	multiVars := boshtempl.NewMultiVars([]boshtempl.Variables{staticVariables, structVariables})
+	factory := cfgtypes.NewValueGeneratorConcrete(NewVarsCertLoader(multiVars))
 
 	if dd.ManifestData["variables"] != nil {
 		for _, elem := range dd.ManifestData["variables"].([]interface{}) {
@@ -222,11 +226,18 @@ func (dd *DeploymentData) EvaluateTemplate(vars map[string]interface{}, opts Eva
 			if err != nil {
 				return err
 			}
-			variables[vdname.(string)] = value
+			if vdtype == "ssh" || vdtype == "certificate" {
+				structVariables[vdname.(string)] = value
+			} else {
+				staticVariables[vdname.(string)] = value
+			}
 		}
 	}
-
-	result, err = template.Evaluate(boshtempl.StaticVariables(vars), nil, boshtempl.EvaluateOpts(opts))
+	for key, value := range structVariables {
+		mapVariables.Add(key, value)
+	}
+	multiVars = boshtempl.NewMultiVars([]boshtempl.Variables{staticVariables, mapVariables})
+	result, err = template.Evaluate(multiVars, nil, boshtempl.EvaluateOpts(opts))
 	if err != nil {
 		return err
 	}
@@ -234,7 +245,7 @@ func (dd *DeploymentData) EvaluateTemplate(vars map[string]interface{}, opts Eva
 	if err := yaml.Unmarshal(dd.ManifestBytes, &dd.ManifestData); err != nil {
 		return err
 	}
-	dd.Variables = variables
+	dd.Variables = multiVars
 	return nil
 }
 func (dd DeploymentData) CreateOrUpdateDeployment() error {
