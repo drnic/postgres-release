@@ -35,4 +35,7 @@ var _ = BeforeSuite(func() {
 
 	versions, err = helpers.NewPostgresReleaseVersions(configParams.VersionsFile)
 	Expect(err).NotTo(HaveOccurred())
+
+	err = director.UploadReleaseFromURL("cloudfoundry", "os-conf-release", 17)
+	Expect(err).NotTo(HaveOccurred())
 })
