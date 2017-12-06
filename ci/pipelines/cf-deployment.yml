@@ -18,12 +18,6 @@ resources:
     branch: master
     private_key: {{postgres_ci_env_private_key}}
 
-- name: cf-acceptance-tests
-  type: git
-  source:
-    uri: https://github.com/cloudfoundry/cf-acceptance-tests.git
-    branch: master
-
 jobs:
 - name: upload-stemcells-releases
   serial_groups: [cf-fresh,cf-old,cf-older]
@@ -93,12 +87,12 @@ jobs:
       DEPLOYMENT_NAME: {{fresh_cf_deployment}}
 
 - name: cleanup-releases
-  serial_groups: [cf-fresh,cf-old,cf-older]
+  serial_groups: [cf-fresh]
   plan:
   - aggregate:
     - get: postgres-release
       resource: postgres-release-develop
-      passed: [delete-deployments-fresh,delete-deployments-old,delete-deployments-older]
+      passed: [delete-deployments-fresh]
       trigger: true
   - task: cleanup-releases-fresh
     file: postgres-release/ci/scripts/run-bosh-cleanup/task.yml

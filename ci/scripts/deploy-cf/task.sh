@@ -28,7 +28,7 @@ function main(){
     -o "${root}/cf-deployment/operations/rename-deployment.yml" \
     -v deployment_name="${CF_DEPLOYMENT}" \
     -v system_domain="apps.${CF_DEPLOYMENT}.microbosh" \
-    -v cf_admin_password="${API_PASSWORD}"
+    -v cf_admin_password="${API_PASSWORD}" \
     -o "${root}/cf-deployment/operations/use-postgres.yml" \
     -o "${root}/cf-deployment/operations/scale-to-one-az.yml" \
     -o "${root}/cf-deployment/operations/use-latest-stemcell.yml" \
