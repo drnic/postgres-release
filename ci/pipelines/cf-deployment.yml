@@ -40,24 +40,6 @@ jobs:
       BOSH_CA_CERT: {{fresh_ca_cert}}
       BOSH_PUBLIC_IP: {{fresh_bosh_public_ip}}
       STEMCELL_VERSION: {{stemcell_version}}
-  - task: upload-stemcell-old
-    file: postgres-release/ci/scripts/upload-stemcell/task.yml
-    params: &bosh_params_old
-      BOSH_DIRECTOR: {{old_bosh_director}}
-      BOSH_CLIENT: {{old_bosh_user}}
-      BOSH_CLIENT_SECRET: {{old_bosh_password}}
-      BOSH_CA_CERT: {{old_ca_cert}}
-      BOSH_PUBLIC_IP: {{old_bosh_public_ip}}
-      STEMCELL_VERSION: {{stemcell_version}}
-  - task: upload-stemcell-older
-    file: postgres-release/ci/scripts/upload-stemcell/task.yml
-    params: &bosh_params_older
-      BOSH_DIRECTOR: {{older_bosh_director}}
-      BOSH_CLIENT: {{older_bosh_user}}
-      BOSH_CLIENT_SECRET: {{older_bosh_password}}
-      BOSH_CA_CERT: {{older_ca_cert}}
-      BOSH_PUBLIC_IP: {{older_bosh_public_ip}}
-      STEMCELL_VERSION: {{stemcell_version}}
   - task: create-postgres-dev-release-tarball
     file: postgres-release/ci/scripts/create-dev-release-tarball/task.yml
     input_mapping: {dev-release: postgres-release}
@@ -71,16 +53,6 @@ jobs:
     input_mapping: {dev-release-tarball: postgres-tarball}
     params:
       <<: *bosh_params_fresh
-  - task: upload-postgres-dev-release-old
-    file: postgres-release/ci/scripts/upload-dev-release-tarball/task.yml
-    input_mapping: {dev-release-tarball: postgres-tarball}
-    params:
-      <<: *bosh_params_old
-  - task: upload-postgres-dev-release-older
-    file: postgres-release/ci/scripts/upload-dev-release-tarball/task.yml
-    input_mapping: {dev-release-tarball: postgres-tarball}
-    params:
-      <<: *bosh_params_older
 
 - name: test-fresh-deployment
   serial_groups: [cf-fresh]
@@ -98,6 +70,13 @@ jobs:
       <<: *bosh_params_fresh
       CF_DEPLOYMENT: {{fresh_cf_deployment}}
       API_PASSWORD: {{cf_api_password}}
+      S3_ACCESS_KEY: {{s3_access_key}}
+      S3_SECRET_KEY: {{s3_secret_key}}
+      S3_HOST: {{s3_host}}
+  - task: test-cf
+    file: postgres-release/ci/scripts/populate-db/task.yml
+    params:
+      <<: *base_params_fresh
 
 - name: delete-deployments-fresh
   serial_groups: [cf-fresh]
@@ -125,11 +104,3 @@ jobs:
     file: postgres-release/ci/scripts/run-bosh-cleanup/task.yml
     params:
       <<: *bosh_params_fresh
-  - task: cleanup-releases-old
-    file: postgres-release/ci/scripts/run-bosh-cleanup/task.yml
-    params:
-      <<: *bosh_params_old
-  - task: cleanup-releases-older
-    file: postgres-release/ci/scripts/run-bosh-cleanup/task.yml
-    params:
-      <<: *bosh_params_older
