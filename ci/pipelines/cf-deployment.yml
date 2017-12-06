@@ -1,9 +1,15 @@
 resources:
-- name: cf-deployment
+- name: cf-deployment-rc
   type: git
   source:
     uri: https://github.com/cloudfoundry/cf-deployment.git
     branch: release-candidate
+
+- name: cf-deployment-old
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry/cf-deployment.git
+    tag: {{cf-deployment-old-tag}}
 
 - name: postgres-release-develop
   type: git
@@ -27,50 +33,97 @@ jobs:
       resource: postgres-release-develop
   - task: upload-stemcell-fresh
     file: postgres-release/ci/scripts/upload-stemcell/task.yml
-    params: &bosh_params_fresh
+    params: &fresh_params
       BOSH_DIRECTOR: {{fresh_bosh_director}}
       BOSH_CLIENT: {{fresh_bosh_user}}
       BOSH_CLIENT_SECRET: {{fresh_bosh_password}}
       BOSH_CA_CERT: {{fresh_ca_cert}}
       BOSH_PUBLIC_IP: {{fresh_bosh_public_ip}}
       STEMCELL_VERSION: {{stemcell_version}}
+      CF_DEPLOYMENT: {{fresh_cf_deployment}}
+      API_PASSWORD: {{cf_api_password}}
+      S3_ACCESS_KEY: {{s3_access_key}}
+      S3_SECRET_KEY: {{s3_secret_key}}
+      S3_HOST: {{s3_host}}
+  - task: upload-stemcell-old
+    file: postgres-release/ci/scripts/upload-stemcell/task.yml
+    params: &old_params
+      BOSH_DIRECTOR: {{old_bosh_director}}
+      BOSH_CLIENT: {{old_bosh_user}}
+      BOSH_CLIENT_SECRET: {{old_bosh_password}}
+      BOSH_CA_CERT: {{old_ca_cert}}
+      BOSH_PUBLIC_IP: {{old_bosh_public_ip}}
+      STEMCELL_VERSION: {{stemcell_version}}
+      CF_DEPLOYMENT: {{old_cf_deployment}}
+      API_PASSWORD: {{cf_api_password}}
+      S3_ACCESS_KEY: {{s3_access_key}}
+      S3_SECRET_KEY: {{s3_secret_key}}
+      S3_HOST: {{s3_host}}
   - task: create-postgres-dev-release-tarball
     file: postgres-release/ci/scripts/create-dev-release-tarball/task.yml
     input_mapping: {dev-release: postgres-release}
     output_mapping: {dev-release-tarball: postgres-tarball}
     params:
-      <<: *bosh_params_fresh
+      <<: *fresh_params
       REL_NAME: postgres
       REL_VERSION: v999+dev.1
   - task: upload-postgres-dev-release-fresh
     file: postgres-release/ci/scripts/upload-dev-release-tarball/task.yml
     input_mapping: {dev-release-tarball: postgres-tarball}
     params:
-      <<: *bosh_params_fresh
+      <<: *fresh_params
+  - task: upload-postgres-dev-release-old
+    file: postgres-release/ci/scripts/upload-dev-release-tarball/task.yml
+    input_mapping: {dev-release-tarball: postgres-tarball}
+    params:
+      <<: *old_params
 
 - name: test-fresh-deployment
   serial_groups: [cf-fresh]
   plan:
   - aggregate:
-    - get: cf-deployment
-    - get: postgres-ci-env
+    - get: cf-deployment-rc
+      input_mapping: {cf-deployment: cf-deployment-rc}
     - get: postgres-release
       resource: postgres-release-develop
       passed: [upload-stemcells-releases]
       trigger: true
   - task: deploy-cf
     file: postgres-release/ci/scripts/deploy-cf/task.yml
-    params: &base_params_fresh
-      <<: *bosh_params_fresh
-      CF_DEPLOYMENT: {{fresh_cf_deployment}}
-      API_PASSWORD: {{cf_api_password}}
-      S3_ACCESS_KEY: {{s3_access_key}}
-      S3_SECRET_KEY: {{s3_secret_key}}
-      S3_HOST: {{s3_host}}
+    params:
+      <<: *fresh_params
   - task: test-cf
     file: postgres-release/ci/scripts/populate-db/task.yml
     params:
-      <<: *base_params_fresh
+      <<: *fresh_params
+
+- name: test-old-deployment
+  serial_groups: [cf-old]
+  plan:
+  - aggregate:
+    - get: cf-deployment-old
+    - get: cf-deployment-rc
+      input_mapping: {cf-deployment: cf-deployment}
+    - get: postgres-release
+      resource: postgres-release-develop
+      passed: [upload-stemcells-releases]
+      trigger: true
+  - task: deploy-cf-old
+    file: postgres-release/ci/scripts/deploy-cf/task_old.yml
+    params:
+      <<: *old_params
+  - task: populate-db
+    file: postgres-release/ci/scripts/populate-db/task.yml
+    params:
+      <<: *old_params
+  - task: deploy-cf
+    file: postgres-release/ci/scripts/deploy-cf/task.yml
+    params:
+      <<: *old_params
+  - task: check-db
+    file: postgres-release/ci/scripts/check-db/task.yml
+    params:
+      <<: *old_params
 
 - name: delete-deployments-fresh
   serial_groups: [cf-fresh]
@@ -83,11 +136,23 @@ jobs:
   - task: delete-cf-deployment
     file: postgres-release/ci/scripts/run-bosh-delete/task.yml
     params:
-      <<: *bosh_params_fresh
-      DEPLOYMENT_NAME: {{fresh_cf_deployment}}
+      <<: *fresh_params
+
+- name: delete-deployments-old
+  serial_groups: [cf-old]
+  plan:
+  - aggregate:
+    - get: postgres-release
+      resource: postgres-release-develop
+      passed: [test-old-deployment]
+      trigger: true
+  - task: delete-cf-deployment
+    file: postgres-release/ci/scripts/run-bosh-delete/task.yml
+    params:
+      <<: *old_params
 
 - name: cleanup-releases
-  serial_groups: [cf-fresh]
+  serial_groups: [cf-fresh,cf-old]
   plan:
   - aggregate:
     - get: postgres-release
@@ -97,4 +162,8 @@ jobs:
   - task: cleanup-releases-fresh
     file: postgres-release/ci/scripts/run-bosh-cleanup/task.yml
     params:
-      <<: *bosh_params_fresh
+      <<: *fresh_params
+  - task: cleanup-releases-old
+    file: postgres-release/ci/scripts/run-bosh-cleanup/task.yml
+    params:
+      <<: *old_params

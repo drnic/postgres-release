@@ -12,6 +12,7 @@ preflight_check() {
   test -n "${S3_ACCESS_KEY}"
   test -n "${S3_SECRET_KEY}"
   test -n "${S3_HOST}"
+  test -n "${USE_LATEST}"
   set -x
 }
 
@@ -20,6 +21,11 @@ function main(){
   preflight_check
 
   export BOSH_ENVIRONMENT="https://${BOSH_DIRECTOR}:25555"
+
+  EXTRA_OPS="-o \"${root}/postgres-release/ci/templates/use-latest-postgres-release.yml\""
+  if [ "$USE_LATEST" == "false" ]; then
+    EXTRA_OPS=" "
+  fi
 
   sed -i -e "s/region: ((aws_region))/host: ((blobstore_s3_host))/g" "${root}/cf-deployment/operations/use-s3-blobstore.yml"
 
@@ -32,7 +38,7 @@ function main(){
     -o "${root}/cf-deployment/operations/use-postgres.yml" \
     -o "${root}/cf-deployment/operations/scale-to-one-az.yml" \
     -o "${root}/cf-deployment/operations/use-latest-stemcell.yml" \
-    -o "${root}/postgres-release/ci/templates/use-latest-postgres-release.yml" \
+    $EXTRA_OPS \
     -v blobstore_access_key_id="${S3_ACCESS_KEY}" \
     -v blobstore_secret_access_key="${S3_SECRET_KEY}" \
     -v blobstore_s3_host="${S3_HOST}" \
