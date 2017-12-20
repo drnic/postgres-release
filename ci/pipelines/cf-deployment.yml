@@ -17,13 +17,6 @@ resources:
     uri: https://github.com/cloudfoundry/postgres-release.git
     branch: develop
 
-- name: postgres-ci-env
-  type: git
-  source:
-    uri: git@github.com:cloudfoundry/postgres-ci-env
-    branch: master
-    private_key: {{postgres_ci_env_private_key}}
-
 - name: cf-acceptance-tests
   type: git
   source:
@@ -88,8 +81,8 @@ jobs:
   serial_groups: [cf-fresh]
   plan:
   - aggregate:
-    - get: cf-deployment-rc
-      input_mapping: {cf-deployment: cf-deployment-rc}
+    - get: cf-deployment
+      resource: cf-deployment-rc
     - get: postgres-release
       resource: postgres-release-develop
       passed: [upload-stemcells-releases]
@@ -99,6 +92,7 @@ jobs:
     file: postgres-release/ci/scripts/deploy-cf/task.yml
     params:
       <<: *fresh_params
+      USE_LATEST_PGREL: true
   - task: test-cf
     file: postgres-release/ci/scripts/populate-db/task.yml
     params:
@@ -110,14 +104,14 @@ jobs:
   - aggregate:
     - get: cf-deployment-old
     - get: cf-deployment-rc
-      input_mapping: {cf-deployment: cf-deployment}
     - get: postgres-release
       resource: postgres-release-develop
       passed: [upload-stemcells-releases]
       trigger: true
     - get: cf-acceptance-tests
   - task: deploy-cf-old
-    file: postgres-release/ci/scripts/deploy-cf/task_old.yml
+    input_mapping: {cf-deployment: cf-deployment-old}
+    file: postgres-release/ci/scripts/deploy-cf/task.yml
     params:
       <<: *old_params
   - task: populate-db
@@ -125,7 +119,8 @@ jobs:
     params:
       <<: *old_params
   - task: deploy-cf
-    file: postgres-release/ci/scripts/deploy-cf/task.yml
+    file: postgres-release/ci/scripts/deploy-cf/task_upg.yml
+    input_mapping: {cf-deployment: cf-deployment-rc}
     params:
       <<: *old_params
   - task: check-db

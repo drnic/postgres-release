@@ -8,10 +8,8 @@ image_resource:
     repository: cfinfrastructure/deployment
 
 inputs:
-- name: cf-deployment-old
+- name: cf-deployment
 - name: postgres-release
-
-outputs:
 - name: cf-variables
 
 run:
@@ -28,4 +26,4 @@ params:
   S3_ACCESS_KEY:
   S3_SECRET_KEY:
   S3_HOST:
-  USE_LATEST: false
+  USE_LATEST_PGREL: true

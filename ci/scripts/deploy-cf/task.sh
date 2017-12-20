@@ -12,7 +12,7 @@ preflight_check() {
   test -n "${S3_ACCESS_KEY}"
   test -n "${S3_SECRET_KEY}"
   test -n "${S3_HOST}"
-  test -n "${USE_LATEST}"
+  test -n "${USE_LATEST_PGREL}"
   set -x
 }
 
@@ -23,7 +23,7 @@ function main(){
   export BOSH_ENVIRONMENT="https://${BOSH_DIRECTOR}:25555"
 
   EXTRA_OPS="-o \"${root}/postgres-release/ci/templates/use-latest-postgres-release.yml\""
-  if [ "$USE_LATEST" == "false" ]; then
+  if [ "$USE_LATEST_PGREL" == "false" ]; then
     EXTRA_OPS=" "
   fi
 
