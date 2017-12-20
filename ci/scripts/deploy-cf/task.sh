@@ -30,7 +30,7 @@ function main(){
   sed -i -e "s/region: ((aws_region))/host: ((blobstore_s3_host))/g" "${root}/cf-deployment/operations/use-s3-blobstore.yml"
 
   bosh interpolate "${root}/cf-deployment/cf-deployment.yml" \
-    --vars-store "${root}/variables_output.yml" \
+    --vars-store "${root}/cf-variables/variables_output.yml" \
     -o "${root}/cf-deployment/operations/rename-deployment.yml" \
     -v deployment_name="${CF_DEPLOYMENT}" \
     -v system_domain="apps.${CF_DEPLOYMENT}.microbosh" \

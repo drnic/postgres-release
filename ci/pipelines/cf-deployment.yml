@@ -24,6 +24,12 @@ resources:
     branch: master
     private_key: {{postgres_ci_env_private_key}}
 
+- name: cf-acceptance-tests
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry/cf-acceptance-tests.git
+    branch: master
+
 jobs:
 - name: upload-stemcells-releases
   serial_groups: [cf-fresh,cf-old,cf-older]
@@ -88,6 +94,7 @@ jobs:
       resource: postgres-release-develop
       passed: [upload-stemcells-releases]
       trigger: true
+    - get: cf-acceptance-tests
   - task: deploy-cf
     file: postgres-release/ci/scripts/deploy-cf/task.yml
     params:
@@ -108,6 +115,7 @@ jobs:
       resource: postgres-release-develop
       passed: [upload-stemcells-releases]
       trigger: true
+    - get: cf-acceptance-tests
   - task: deploy-cf-old
     file: postgres-release/ci/scripts/deploy-cf/task_old.yml
     params:

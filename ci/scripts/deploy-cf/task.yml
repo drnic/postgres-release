@@ -10,6 +10,7 @@ image_resource:
 inputs:
 - name: cf-deployment
 - name: postgres-release
+- name: cf-variables
 
 run:
   path: postgres-release/ci/scripts/deploy-cf/task.sh

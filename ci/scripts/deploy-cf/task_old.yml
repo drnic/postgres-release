@@ -11,6 +11,9 @@ inputs:
 - name: cf-deployment-old
 - name: postgres-release
 
+outputs:
+- name: cf-variables
+
 run:
   path: postgres-release/ci/scripts/deploy-cf/task.sh
 
