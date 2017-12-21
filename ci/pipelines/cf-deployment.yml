@@ -54,6 +54,7 @@ jobs:
       BOSH_PUBLIC_IP: {{old_bosh_public_ip}}
       STEMCELL_VERSION: {{stemcell_version}}
       CF_DEPLOYMENT: {{old_cf_deployment}}
+      API_USER: {{cf_api_user}}
       API_PASSWORD: {{cf_api_password}}
       S3_ACCESS_KEY: {{s3_access_key}}
       S3_SECRET_KEY: {{s3_secret_key}}
